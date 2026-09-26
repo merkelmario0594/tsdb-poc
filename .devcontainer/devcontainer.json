@@ -1,0 +1,49 @@
+{
+  "name": "QuestDB, ClickHouse & Grafana Stack",
+  "dockerComposeFile": "../docker-compose.yaml",
+  "service": "codespaces-base",
+  "runServices": [
+    "questdb",
+    "clickhouse",
+    "grafana"
+  ],
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [
+    3000,
+    8123,
+    8812,
+    9000,
+    9005,
+    9009
+  ],
+  "portsAttributes": {
+    "3000": {
+      "label": "Grafana Dashboard",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    },
+    "8123": {
+      "label": "ClickHouse HTTP Play-Interface",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    },
+    "9000": {
+      "label": "QuestDB Web Console",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    },
+    "8812": {
+      "label": "QuestDB Postgres Wire (Grafana)",
+      "visibility": "public"
+    },
+    "9005": {
+      "label": "ClickHouse Native Client",
+      "visibility": "public"
+    },
+    "9009": {
+      "label": "QuestDB ILP Ingest",
+      "visibility": "public"
+    }
+  },
+  "postStartCommand": "npm install -g @google/genai && echo '--------------------------------------------------------' && echo 'DEIN KI-SUPPORT IST BEREIT!' && echo 'Um die KI zu starten, tippe einfach: gemini-cli' && echo '--------------------------------------------------------'"
+}

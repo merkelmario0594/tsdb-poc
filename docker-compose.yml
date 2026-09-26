@@ -28,3 +28,10 @@ services:
     depends_on:
       - questdb
       - clickhouse
+
+  # Steuerungs-Container für GitHub Codespaces Terminal
+  codespaces-base:
+    image: ://microsoft.com
+    volumes:
+      - .:/workspace:cached
+    command: sleep infinity
