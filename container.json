@@ -1,6 +1,6 @@
 {
   "name": "QuestDB, ClickHouse & Grafana Stack",
-  "dockerComposeFile": "../docker-compose.yaml",
+  "dockerComposeFile": "../docker-compose.yml",
   "service": "codespaces-base",
   "runServices": [
     "questdb",
