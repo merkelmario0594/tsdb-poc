@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  questdb:
+    image: questdb/questdb:latest
+    container_name: questdb_poc
+    ports:
+      - "9000:9000"  # Web-UI
+      - "8812:8812"  # Postgres-Protokoll (für Grafana)
+      - "9009:9009"  # ILP Ingest
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse_poc
+    ports:
+      - "8123:8123"  # HTTP Play-Interface
+      - "9005:9000"  # Native Client (Port umgeleitet wegen QuestDB)
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana_poc
+    ports:
+      - "3000:3000"
+    depends_on:
+      - questdb
+      - clickhouse
