@@ -15,7 +15,7 @@ INTERVAL_SECONDS = 0.5
 
 def create_client():
     return clickhouse_connect.get_client(
-        host='z287e7mm2l.eu-central-1.aws.clickhouse.cloud',
+        host=os.environ.get('CLICKHOUSE_SERVER', ''),
         user='default',
         password=os.environ.get('CLICKHOUSE_SECRET', ''),
         secure=True,
