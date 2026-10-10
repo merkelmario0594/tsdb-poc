@@ -2,18 +2,20 @@ import json
 import os
 import random
 import time
+import math
 from datetime import datetime, timezone
 
 
-TOPIC = "tsdb_poc"
+TOPIC = "tsdb_poc_forecast"
 BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVER")
 KAFKA_API_KEY = os.environ.get("KAFKA_API_KEY")
 KAFKA_API_SECRET = os.environ.get("KAFKA_API_SECRET")
 KAFKA_SECURITY_PROTOCOL = "SASL_SSL"
 KAFKA_SASL_MECHANISM = "PLAIN"
 SENSOR_COUNT = 100
-BATCH_SIZE = 1000
-INTERVAL_SECONDS = 0.5
+FORECAST_LENGTH = 10
+BATCH_SIZE = 1
+INTERVAL_SECONDS = 0.1
 
 
 def _json_default(value):
@@ -27,6 +29,25 @@ def generate_row(sensor_id):
         "timestamp": datetime.now(timezone.utc),
         "id": f"sensor-{sensor_id}",
         "value": round(random.uniform(15.0, 35.0), 3),
+        "tags": {
+            "type": "temperature",
+            "location": f"room-{sensor_id % 10}",
+            "environment": "test",
+        },
+    }
+
+def generate_row_forecast(sensor_id,length):
+    now = datetime.now(timezone.utc)
+    
+    # Auf die nächste Viertelstunde (900 Sekunden) aufrunden
+    future_ts = math.ceil(now.timestamp() / 900) * 900
+    future_timestamp = datetime.fromtimestamp(future_ts, tz=timezone.utc)
+    
+    return {
+        "timestamp": future_timestamp.isoformat(),
+        "as_of": now.isoformat(),
+        "id": f"sensor-{sensor_id}",
+        "value": [round(random.uniform(15.0, 35.0), 3) for _ in range(length)],
         "tags": {
             "type": "temperature",
             "location": f"room-{sensor_id % 10}",
@@ -80,10 +101,11 @@ def main():
 
         for _ in range(BATCH_SIZE):
             sensor_id = random.randint(1, SENSOR_COUNT)
-            rows.append(generate_row(sensor_id))
+            rows.append(generate_row_forecast(sensor_id, FORECAST_LENGTH))
 
         for row in rows:
             producer.send(TOPIC, key=row["id"], value=row)
+            print(row)
 
         producer.flush()
 
