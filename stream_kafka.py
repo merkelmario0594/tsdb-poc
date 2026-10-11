@@ -3,7 +3,7 @@ import os
 import random
 import time
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 
 TOPIC = "tsdb_poc_forecast"
@@ -13,10 +13,43 @@ KAFKA_API_SECRET = os.environ.get("KAFKA_API_SECRET")
 KAFKA_SECURITY_PROTOCOL = "SASL_SSL"
 KAFKA_SASL_MECHANISM = "PLAIN"
 SENSOR_COUNT = 100
-FORECAST_LENGTH = 10
-BATCH_SIZE = 1
+FORECAST_LENGTH = 100
+BATCH_SIZE = 2000
 INTERVAL_SECONDS = 0.1
+TIMEBAND_VALUES = [
+    "TB_A",
+    "TB_B",
+    "TB_C",
+    "TB_D",
+    "TB_E",
+    "TB_F",
+    "TB_G",
+    "TB_H",
+    "TB_I",
+    "TB_J",
+    "TB_K",
+    "TB_L",
+    "TB_M",
+    "TB_N",
+    "TB_O",
+    "TB_P",
+    "TB_Q",
+    "TB_R",
+    "TB_S",
+    "TB_T",
+    "TB_U",
+    "TB_V",
+    "TB_W",
+    "TB_X",
+    "TB_Y",
+    "TB_Z",
+]
 
+ROOM_COUNT = 10
+
+# UTC date range: October 10 through October 20, 2026, inclusive.
+START_DATE = datetime(2026, 10, 10, 0, 0, 0, tzinfo=timezone.utc)
+END_DATE_EXCLUSIVE = datetime(2026, 10, 21, 0, 0, 0, tzinfo=timezone.utc)
 
 def _json_default(value):
     if isinstance(value, datetime):
@@ -55,6 +88,17 @@ def generate_row_forecast(sensor_id,length):
         },
     }
 
+def iso_utc(value):
+    return value.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+def generate_characteristics(room_id,valid_from,valid_until):
+    return {
+        "characteristic_id": room_id,
+        "valid_from": iso_utc(valid_from),
+        "valid_until": iso_utc(valid_until),
+        "value": random.choice(TIMEBAND_VALUES),
+    }
+
 
 def serialize_row(row):
     return json.dumps(row, default=_json_default).encode("utf-8")
@@ -91,6 +135,51 @@ def create_producer():
 
 
 def main():
+    """
+    producer = create_producer()
+
+    print("Connected to Kafka")
+    print(f"Streaming {SENSOR_COUNT} sensors to topic '{TOPIC}'...")
+
+    room_ids = [f"room-{i}" for i in range(ROOM_COUNT)]
+    total_messages = 0
+    valid_from = START_DATE
+
+    try:
+        while valid_from < END_DATE_EXCLUSIVE:
+            valid_until = valid_from + timedelta(hours=1)
+
+            for room_id in room_ids:
+                row = generate_characteristics(
+                    room_id,
+                    valid_from,
+                    valid_until,
+                )
+
+                producer.send(TOPIC, key=row["characteristic_id"], value=row,)
+
+                total_messages += 1
+                print(json.dumps(row))
+
+            # Ensure this hourly batch has been delivered before continuing.
+            producer.flush()
+
+            print(
+                f"Published window {iso_utc(valid_from)} - "
+                f"{iso_utc(valid_until)}"
+            )
+
+            valid_from = valid_until
+
+    except KeyboardInterrupt:
+        print("Interrupted by user.")
+    finally:
+        producer.flush()
+        producer.close()
+
+    print(f"Finished. Published {total_messages} messages.")
+
+    """
     producer = create_producer()
 
     print("Connected to Kafka")
@@ -105,7 +194,6 @@ def main():
 
         for row in rows:
             producer.send(TOPIC, key=row["id"], value=row)
-            print(row)
 
         producer.flush()
 
@@ -115,6 +203,8 @@ def main():
         )
 
         time.sleep(INTERVAL_SECONDS)
+    
+    
 
 
 if __name__ == "__main__":
