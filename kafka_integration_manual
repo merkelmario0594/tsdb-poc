@@ -1,0 +1,74 @@
+-- get error logs
+SELECT 
+    event_time, 
+    message 
+FROM system.text_log 
+WHERE message LIKE '%Kafka%' 
+   OR message LIKE '%librdkafka%' 
+   OR message LIKE '%sasl%'
+ORDER BY event_time DESC 
+LIMIT 30;
+
+
+
+DROP TABLE IF EXISTS tsdb_poc.kafka_to_raw_mv;
+DROP TABLE IF EXISTS tsdb_poc.kafka_source_queue;
+DROP TABLE IF EXISTS tsdb_poc.tsdb_poc_raw;
+
+-- load raw data
+CREATE TABLE IF NOT EXISTS tsdb_poc.kafka_source_queue
+(
+    raw String
+)
+ENGINE = Kafka
+SETTINGS
+    kafka_topic_list = 'tsdb_poc',
+    kafka_group_name = 'clickhouse_integration_kafka_tsdb_poc',
+    kafka_format = 'JSONAsString',
+
+    kafka_security_protocol = 'sasl_ssl', -- Falls unverschlüsselt: 'sasl_plaintext'
+    kafka_sasl_mechanism = 'PLAIN',
+
+    kafka_num_consumers = 3,           
+    kafka_max_block_size = 1048576,     
+    kafka_skip_broken_messages = 10,   
+    kafka_poll_timeout_ms = 500;
+
+
+
+
+CREATE TABLE IF NOT EXISTS tsdb_poc.tsdb_poc_raw
+(
+    id String,
+    tags String,
+    timestamp DateTime64(9, 'UTC'),
+    value Float64,
+    _key String,
+    _timestamp DateTime64(3, 'UTC'),
+    _partition UInt64,
+    _offset UInt64,
+    _topic LowCardinality(String),
+    ingested_at DateTime64(3, 'UTC')
+)
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY (timestamp, id)
+SETTINGS 
+    index_granularity = 8192,
+    write_final_mark = 0;
+
+
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS tsdb_poc.kafka_to_raw_mv TO tsdb_poc.tsdb_poc_raw AS
+SELECT 
+    visitParamExtractString(raw, 'id') AS id,
+    JSONExtractRaw(raw, 'tags') AS tags,
+    parseDateTime64BestEffort(JSONExtract(raw, 'timestamp', 'String'), 9, 'UTC') AS timestamp,
+    visitParamExtractFloat(raw, 'value') AS value,
+    _key,         -- Virtuelle Spalte von Kafka
+    _timestamp,   -- Virtuelle Spalte von Kafka
+    _partition,   -- Virtuelle Spalte von Kafka
+    _offset,      -- Virtuelle Spalte von Kafka
+    _topic,       -- Virtuelle Spalte von Kafka
+    now('UTC') AS ingested_at
+FROM tsdb_poc.kafka_source_queue;
